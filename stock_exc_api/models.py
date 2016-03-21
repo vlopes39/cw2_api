@@ -2,7 +2,7 @@ from django.db import models
 
 
 class Country(models.Model):
-	name = models.CharField(max_length=100, blank=True, default='')
+	name = models.CharField(max_length=100, blank=True, default="Brazil")
 
 class StockExchangeIndex(models.Model):
 	name = models.CharField(max_length=100, blank=True, default='')
@@ -25,7 +25,7 @@ class Historical_Data(models.Model):
 	low_price = models.FloatField(null=True, blank=True, default=0.0)
 	volume = models.FloatField(null=True, blank=True, default=0.0)
 	change_percent = models.FloatField(null=True, blank=True, default=0.0)
-	index = models.ForeignKey(StockExchangeIndex, null=True, blank=True) # many-to-one with Stock Exchange Index
+	index = models.ForeignKey(StockExchangeIndex, null=True, blank=True, related_name='index') # many-to-one with Stock Exchange Index
 
 class Company(models.Model):
 	name = models.CharField(max_length=100, blank=True, default='')

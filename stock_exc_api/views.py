@@ -1,8 +1,8 @@
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from stock_exc_api.models import StockExchangeIndex, Country
-from stock_exc_api.serializers import StockExchangeIndexSerializer,StockExchangeIndexDetailSerializer,CountrySerializer,HistDataSerializer
+from stock_exc_api.models import StockExchangeIndex, Country, Historical_Data
+from stock_exc_api.serializers import StockExchangeIndexSerializer,StockExchangeIndexDetailSerializer,CountrySerializer,HistDataSerializer, IndexCountry
 from rest_framework import generics
 from rest_framework import filters
 
@@ -17,7 +17,7 @@ class IndexesDetail(generics.RetrieveUpdateDestroyAPIView):
 
 class CountryDetail(generics.RetrieveUpdateDestroyAPIView):
 	queryset = StockExchangeIndex.objects.all()
-	serializer_class = CountrySerializer
+	serializer_class = IndexCountry
 	lookup_field = 'name'
 
 class IndexesListPerCountry(generics.ListCreateAPIView):
