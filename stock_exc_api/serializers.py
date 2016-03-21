@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from stock_exc_api.models import StockExchangeIndex, Country, Historical_Data
 
+#teste!!!
+
 class StockExchangeIndexSerializer(serializers.ModelSerializer):	
 	class Meta:
 		model = StockExchangeIndex
