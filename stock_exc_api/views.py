@@ -7,13 +7,8 @@ from rest_framework import generics
 from stock_exc_api.serializers import CountrySerializer, HistDataSerializer,CompanySerializer, StockExchangeIndexSerializer, StockExchangeIndexDetailSerializer, CountryDetailSerializer, HistDataDetailSerializer
 import django_filters
 from rest_framework import filters
+from rest_framework import permissions
 
-class ListMixingHistData(object):
-    def get(self, request, pk=None):
-        queryset = self.get_queryset()
-        index = get_object_or_404(queryset, pk=pk)
-        serializer = HistDataDetailSerializer(index)
-        return Response(serializer.data)
 
 class MultipleFieldLookupMixin(object):
     """
@@ -27,6 +22,51 @@ class MultipleFieldLookupMixin(object):
         for field in self.lookup_fields:
             filter[field] = self.kwargs[field]
         return get_object_or_404(queryset, **filter)  # Lookup the object
+
+
+
+# Stocks Exchange Indexes List View - State 1
+
+class IndexesList(generics.ListCreateAPIView):
+    queryset = StockExchangeIndex.objects.all()
+    serializer_class = StockExchangeIndexSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filter_fields = ('country__name',)
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)    
+
+# Stock Exchange Index View - State 2
+
+class IndexesDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = StockExchangeIndex.objects.all()
+    serializer_class = StockExchangeIndexDetailSerializer
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    #lookup_field = 'name'
+
+# Stock Exchange Country View - State 3    
+
+class CountryDetail(generics.RetrieveAPIView):
+    queryset = StockExchangeIndex.objects.all()
+    serializer_class = CountryDetailSerializer
+    #permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    #lookup_field = 'pk'
+
+# Stock Exchange Constituents List View - State 4
+
+class ConstituentsList(generics.ListAPIView):
+    queryset = Company.objects.all()
+    serializer_class = CompanySerializer
+    lookup_field = 'index_id'
+    #filter_backends = (filters.DjangoFilterBackend,)
+    #filter_fields = ('country__name',)    
+
+# Stock Exchange Constituent/Company View - State 5    
+
+class ConstituentsDetail(MultipleFieldLookupMixin, generics.RetrieveUpdateAPIView):
+    queryset = Company.objects.all()
+    serializer_class = CompanySerializer
+    lookup_fields = ('index_id', 'pk')
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+
 
 class AllowPUTAsCreateMixin(object):
     """
@@ -67,29 +107,14 @@ class AllowPUTAsCreateMixin(object):
                 # PATCH requests where the object does not exist should still
                 # return a 404 response.
                 raise
-'''
-class IndexesList(generics.ListCreateAPIView):
-	queryset = StockExchangeIndex.objects.all()
-	serializer_class = StockExchangeIndexSerializer
-    filter_backends = (filters.DjangoFilterBackend,)    
-    #filter_field = 'country'   
-'''
-class IndexesList(generics.ListCreateAPIView):
-    queryset = StockExchangeIndex.objects.all()
-    serializer_class = StockExchangeIndexSerializer
-    filter_backends = (filters.DjangoFilterBackend,)
-    filter_fields = ('country__name',)    
 
-class IndexesDetail(generics.RetrieveUpdateDestroyAPIView):
-	queryset = StockExchangeIndex.objects.all()
-	serializer_class = StockExchangeIndexDetailSerializer
-	#lookup_field = 'name'
 
-class CountryDetail(generics.RetrieveAPIView):
-	queryset = StockExchangeIndex.objects.all()
-	serializer_class = CountryDetailSerializer
-	#lookup_field = 'pk'
-
+class ListMixingHistData(object):
+    def get(self, request, pk=None):
+        queryset = self.get_queryset()
+        index = get_object_or_404(queryset, pk=pk)
+        serializer = HistDataDetailSerializer(index)
+        return Response(serializer.data)
 
 class IndexesListPerCountry(generics.RetrieveAPIView):    
     #index = StockExchangeIndex.objects.filter(pk=lookup_field)
@@ -110,82 +135,4 @@ class HistData(ListMixing, generics.ListAPIView):
     queryset = Historical_Data.objects.all()
     serializer_class = HistDataSerializer
     lookup_field = 'index_id'
-'''
-
-class ConstituentsList(generics.ListAPIView):
-    queryset = Company.objects.all()
-    serializer_class = CompanySerializer
-    lookup_field = 'index_id'
-    filter_backends = (filters.DjangoFilterBackend,)
-    filter_fields = ('country__name',)    
-
-class ConstituentsDetail(MultipleFieldLookupMixin, generics.RetrieveUpdateAPIView):
-    queryset = Company.objects.all()
-    serializer_class = CompanySerializer
-    lookup_fields = ('index_id', 'pk')
-
-
-'''
-
-class JSONResponse(HttpResponse):
-    """
-    An HttpResponse that renders its content into JSON.
-    """
-    def __init__(self, data, **kwargs):
-        content = JSONRenderer().render(data)
-        kwargs['content_type'] = 'application/json' # define media type as JSON
-        super(JSONResponse, self).__init__(content, **kwargs)
-
-'''
-'''
-
-# Put simply, decorators wrap a function, modifying its behavior.
-# CSRF token compare the key of original data and posted data. POST is safe(???), but the origin of data is not. 
-#@csrf_exempt 
-
-@api_view(['GET', 'POST'])
-def indexes_list(request, format=None):
-    """
-    List all indexes, or create a new index.
-    """
-    if request.method == 'GET':
-        indexes = StockExchangeIndex.objects.all()
-        serializer = StockExchangeIndexSerializer(indexes, many=True) # many=True to serialize querysets instead of model instances
-        return Response(serializer.data)
-
-    elif request.method == 'POST':
-        #data = JSONParser().parse(request) # parse the data coming in JSON
-        serializer = StockExchangeIndexSerializer(data=request.data) # deserialize
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-#@csrf_exempt
-@api_view(['GET', 'PUT', 'DELETE'])
-def indexes_detail(request, country, format=None):
-    """
-    Retrieve, update or delete an index.
-    """
-    try:
-        index = StockExchangeIndex.objects.get(country=country)
-    except StockExchangeIndex.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    if request.method == 'GET':
-        serializer = StockExchangeIndexSerializer(index)
-        return Response(serializer.data)
-
-    elif request.method == 'PUT':
-        data = JSONParser().parse(request)
-        serializer = StockExchangeIndexSerializer(index, data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    elif request.method == 'DELETE':
-        index.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 '''
